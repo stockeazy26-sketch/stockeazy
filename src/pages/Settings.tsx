@@ -24,6 +24,10 @@ export default function Settings() {
   const queryClient = useQueryClient();
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>("");
+  const [whatsappQRFile, setWhatsappQRFile] = useState<File | null>(null);
+  const [whatsappQRPreview, setWhatsappQRPreview] = useState<string>("");
+  const [instagramQRFile, setInstagramQRFile] = useState<File | null>(null);
+  const [instagramQRPreview, setInstagramQRPreview] = useState<string>("");
 
   const { data: settings, isLoading, error: settingsError } = useQuery({
     queryKey: ["store-settings"],
@@ -85,10 +89,10 @@ export default function Settings() {
     },
   });
 
-  const handleLogoUpload = async (file: File) => {
+  const handleFileUpload = async (file: File, type: 'logo' | 'whatsapp-qr' | 'instagram-qr') => {
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `logo-${Date.now()}.${fileExt}`;
+      const fileName = `${type}-${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -103,8 +107,8 @@ export default function Settings() {
 
       return publicUrl;
     } catch (error) {
-      console.error('Logo upload error:', error);
-      toast({ title: "Failed to upload logo", variant: "destructive" });
+      console.error(`${type} upload error:`, error);
+      toast({ title: `Failed to upload ${type}`, variant: "destructive" });
       return null;
     }
   };
@@ -114,10 +118,22 @@ export default function Settings() {
     const formData = new FormData(e.currentTarget);
     
     let logoUrl = settings?.logo_url;
-    
+    let whatsappQRUrl = settings?.whatsapp_qr_url;
+    let instagramQRUrl = settings?.instagram_qr_url;
+
     if (logoFile) {
-      const uploadedUrl = await handleLogoUpload(logoFile);
+      const uploadedUrl = await handleFileUpload(logoFile, 'logo');
       if (uploadedUrl) logoUrl = uploadedUrl;
+    }
+
+    if (whatsappQRFile) {
+      const uploadedUrl = await handleFileUpload(whatsappQRFile, 'whatsapp-qr');
+      if (uploadedUrl) whatsappQRUrl = uploadedUrl;
+    }
+
+    if (instagramQRFile) {
+      const uploadedUrl = await handleFileUpload(instagramQRFile, 'instagram-qr');
+      if (uploadedUrl) instagramQRUrl = uploadedUrl;
     }
     
     const updates = {
@@ -130,16 +146,20 @@ export default function Settings() {
       low_stock_threshold: parseInt(formData.get("low_stock_threshold") as string) || 10,
       whatsapp_channel_name: (formData.get("whatsapp_channel_name") as string) || '',
       instagram_page_id: (formData.get("instagram_page_id") as string) || '',
-      whatsapp_channel: (formData.get("whatsapp_channel") as string) || '',
-      instagram_page: (formData.get("instagram_page") as string) || '',
       whatsapp_tagline: (formData.get("whatsapp_tagline") as string) || 'Join our WhatsApp group',
       instagram_tagline: (formData.get("instagram_tagline") as string) || 'Follow us on Instagram',
-      logo_url: logoUrl
+      logo_url: logoUrl,
+      whatsapp_qr_url: whatsappQRUrl,
+      instagram_qr_url: instagramQRUrl
     };
 
     updateMutation.mutate(updates);
     setLogoFile(null);
     setLogoPreview("");
+    setWhatsappQRFile(null);
+    setWhatsappQRPreview("");
+    setInstagramQRFile(null);
+    setInstagramQRPreview("");
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -348,39 +368,132 @@ export default function Settings() {
 
           <div className="mb-6 mt-8">
             <h3 className="text-lg font-semibold">Social Media Settings</h3>
-            <p className="text-sm text-muted-foreground">Add your social media links to display QR codes on invoices</p>
+            <p className="text-sm text-muted-foreground">Upload QR codes and add details to display on invoices</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp_channel_name">WhatsApp Channel Name</Label>
-              <Input id="whatsapp_channel_name" name="whatsapp_channel_name" defaultValue={settings?.whatsapp_channel_name || ""} placeholder="e.g., Fashion Updates" />
+          <div className="grid grid-cols-2 gap-6">
+            <div className="space-y-4 p-4 border rounded-lg">
+              <div className="space-y-2">
+                <Label>WhatsApp QR Code</Label>
+                <div className="flex items-center gap-4">
+                  {(whatsappQRPreview || settings?.whatsapp_qr_url) && (
+                    <div className="relative">
+                      <img
+                        src={whatsappQRPreview || settings?.whatsapp_qr_url}
+                        alt="WhatsApp QR"
+                        className="h-24 w-24 object-contain border rounded"
+                      />
+                      {whatsappQRPreview && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6"
+                          onClick={() => {
+                            setWhatsappQRFile(null);
+                            setWhatsappQRPreview("");
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  <div>
+                    <Input
+                      id="whatsapp_qr"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setWhatsappQRFile(file);
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setWhatsappQRPreview(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <Label htmlFor="whatsapp_qr" className="cursor-pointer">
+                      <Button type="button" variant="outline" asChild>
+                        <span>
+                          <Upload className="mr-2 h-4 w-4" />
+                          {whatsappQRPreview || settings?.whatsapp_qr_url ? "Change QR" : "Upload QR"}
+                        </span>
+                      </Button>
+                    </Label>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="whatsapp_tagline">WhatsApp Tagline</Label>
+                <Input id="whatsapp_tagline" name="whatsapp_tagline" defaultValue={settings?.whatsapp_tagline || "Join our WhatsApp group"} placeholder="Join our WhatsApp group" />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="instagram_page_id">Instagram Page ID/Username</Label>
-              <Input id="instagram_page_id" name="instagram_page_id" defaultValue={settings?.instagram_page_id || ""} placeholder="e.g., @yourstore" />
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp_channel">WhatsApp Channel/Group Link</Label>
-              <Input id="whatsapp_channel" name="whatsapp_channel" type="url" defaultValue={settings?.whatsapp_channel || ""} placeholder="https://chat.whatsapp.com/..." />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="instagram_page">Instagram Page Link</Label>
-              <Input id="instagram_page" name="instagram_page" type="url" defaultValue={settings?.instagram_page || ""} placeholder="https://instagram.com/..." />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="whatsapp_tagline">WhatsApp Tagline</Label>
-              <Input id="whatsapp_tagline" name="whatsapp_tagline" defaultValue={settings?.whatsapp_tagline || "Join our WhatsApp group"} placeholder="Join our WhatsApp group" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="instagram_tagline">Instagram Tagline</Label>
-              <Input id="instagram_tagline" name="instagram_tagline" defaultValue={settings?.instagram_tagline || "Follow us on Instagram"} placeholder="Follow us on Instagram" />
+            <div className="space-y-4 p-4 border rounded-lg">
+              <div className="space-y-2">
+                <Label>Instagram QR Code</Label>
+                <div className="flex items-center gap-4">
+                  {(instagramQRPreview || settings?.instagram_qr_url) && (
+                    <div className="relative">
+                      <img
+                        src={instagramQRPreview || settings?.instagram_qr_url}
+                        alt="Instagram QR"
+                        className="h-24 w-24 object-contain border rounded"
+                      />
+                      {instagramQRPreview && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6"
+                          onClick={() => {
+                            setInstagramQRFile(null);
+                            setInstagramQRPreview("");
+                          }}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  <div>
+                    <Input
+                      id="instagram_qr"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setInstagramQRFile(file);
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setInstagramQRPreview(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                    <Label htmlFor="instagram_qr" className="cursor-pointer">
+                      <Button type="button" variant="outline" asChild>
+                        <span>
+                          <Upload className="mr-2 h-4 w-4" />
+                          {instagramQRPreview || settings?.instagram_qr_url ? "Change QR" : "Upload QR"}
+                        </span>
+                      </Button>
+                    </Label>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="instagram_tagline">Instagram Tagline</Label>
+                <Input id="instagram_tagline" name="instagram_tagline" defaultValue={settings?.instagram_tagline || "Follow us on Instagram"} placeholder="Follow us on Instagram" />
+              </div>
             </div>
           </div>
 

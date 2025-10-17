@@ -175,6 +175,14 @@ export function EditInvoiceDialog({ invoiceId, open, onOpenChange }: EditInvoice
                 </p>
               </div>
             )}
+
+            {paymentStatus === 'pending' && invoice.payment_status === 'done' && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <p className="text-sm text-yellow-700">
+                  ⚠ This invoice will be removed from your total sales after updating.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 pt-4">

@@ -199,45 +199,45 @@ export default function Invoices() {
       pdf.text("Grand Total:", pageWidth - 70, yPos);
       pdf.text(invoice.grand_total.toString(), pageWidth - 25, yPos, { align: "right" });
 
-      // Add QR codes at the bottom if social media links exist
+      // Add QR codes at the bottom if uploaded
       const pageHeight = pdf.internal.pageSize.getHeight();
       const bottomY = pageHeight - 50;
 
-      if (storeSettings?.whatsapp_channel || storeSettings?.instagram_page) {
+      if (storeSettings?.whatsapp_qr_url || storeSettings?.instagram_qr_url) {
         let qrX = 20;
 
-        if (storeSettings?.whatsapp_channel) {
+        if (storeSettings?.whatsapp_qr_url) {
           try {
-            const QRCode = (await import('qrcode')).default;
-            const whatsappQR = await QRCode.toDataURL(storeSettings.whatsapp_channel, { width: 150 });
-            pdf.addImage(whatsappQR, 'PNG', qrX, bottomY, 30, 30);
+            const img = new Image();
+            img.src = storeSettings.whatsapp_qr_url;
+            await new Promise((resolve) => {
+              img.onload = resolve;
+              img.onerror = resolve;
+            });
+            pdf.addImage(img, 'PNG', qrX, bottomY, 30, 30);
             pdf.setFontSize(8);
             pdf.setFont(undefined, 'bold');
             pdf.text(storeSettings.whatsapp_tagline || 'Join our WhatsApp', qrX + 15, bottomY + 35, { align: 'center' });
-            if (storeSettings.whatsapp_channel_name) {
-              pdf.setFont(undefined, 'normal');
-              pdf.text(storeSettings.whatsapp_channel_name, qrX + 15, bottomY + 40, { align: 'center' });
-            }
             qrX += 60;
           } catch (err) {
-            console.error('WhatsApp QR generation failed:', err);
+            console.error('WhatsApp QR load failed:', err);
           }
         }
 
-        if (storeSettings?.instagram_page) {
+        if (storeSettings?.instagram_qr_url) {
           try {
-            const QRCode = (await import('qrcode')).default;
-            const instagramQR = await QRCode.toDataURL(storeSettings.instagram_page, { width: 150 });
-            pdf.addImage(instagramQR, 'PNG', qrX, bottomY, 30, 30);
+            const img = new Image();
+            img.src = storeSettings.instagram_qr_url;
+            await new Promise((resolve) => {
+              img.onload = resolve;
+              img.onerror = resolve;
+            });
+            pdf.addImage(img, 'PNG', qrX, bottomY, 30, 30);
             pdf.setFontSize(8);
             pdf.setFont(undefined, 'bold');
             pdf.text(storeSettings.instagram_tagline || 'Follow us on Instagram', qrX + 15, bottomY + 35, { align: 'center' });
-            if (storeSettings.instagram_page_id) {
-              pdf.setFont(undefined, 'normal');
-              pdf.text(storeSettings.instagram_page_id, qrX + 15, bottomY + 40, { align: 'center' });
-            }
           } catch (err) {
-            console.error('Instagram QR generation failed:', err);
+            console.error('Instagram QR load failed:', err);
           }
         }
       }
@@ -536,11 +536,9 @@ export default function Invoices() {
                     <Button variant="ghost" size="icon" onClick={() => downloadPDF(inv.id)}>
                       <Download className="h-4 w-4" />
                     </Button>
-                    {inv.payment_status === 'pending' && (
-                      <Button variant="ghost" size="icon" onClick={() => { setEditInvoiceId(inv.id); setEditDialogOpen(true); }}>
-                        <Edit className="h-4 w-4 text-blue-500" />
-                      </Button>
-                    )}
+                    <Button variant="ghost" size="icon" onClick={() => { setEditInvoiceId(inv.id); setEditDialogOpen(true); }}>
+                      <Edit className="h-4 w-4 text-blue-500" />
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => setDeleteInvoiceId(inv.id)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>

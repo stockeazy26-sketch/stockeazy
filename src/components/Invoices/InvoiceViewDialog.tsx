@@ -56,26 +56,11 @@ export function InvoiceViewDialog({ invoiceId, open, onOpenChange }: InvoiceView
   });
 
   useEffect(() => {
-    const generateQRCodes = async () => {
-      if (storeSettings?.whatsapp_channel) {
-        try {
-          const qr = await QRCode.toDataURL(storeSettings.whatsapp_channel, { width: 100 });
-          setWhatsappQR(qr);
-        } catch (err) {
-          console.error("WhatsApp QR generation failed", err);
-        }
-      }
-      if (storeSettings?.instagram_page) {
-        try {
-          const qr = await QRCode.toDataURL(storeSettings.instagram_page, { width: 100 });
-          setInstagramQR(qr);
-        } catch (err) {
-          console.error("Instagram QR generation failed", err);
-        }
-      }
-    };
-    if (storeSettings) {
-      generateQRCodes();
+    if (storeSettings?.whatsapp_qr_url) {
+      setWhatsappQR(storeSettings.whatsapp_qr_url);
+    }
+    if (storeSettings?.instagram_qr_url) {
+      setInstagramQR(storeSettings.instagram_qr_url);
     }
   }, [storeSettings]);
 
@@ -177,9 +162,9 @@ export function InvoiceViewDialog({ invoiceId, open, onOpenChange }: InvoiceView
               <Separator />
               <div className="flex justify-between items-center gap-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
                 {whatsappQR && (
-                  <div className="flex-1 flex items-center gap-3 bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
+                  <div className="flex-1 flex items-center gap-3 bg-gradient-to-r from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-lg p-3 border border-green-200 dark:border-green-800">
                     <div className="flex-shrink-0">
-                      <img src={whatsappQR} alt="WhatsApp" className="w-20 h-20" />
+                      <img src={whatsappQR} alt="WhatsApp" className="w-20 h-20 rounded" />
                     </div>
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
@@ -192,9 +177,9 @@ export function InvoiceViewDialog({ invoiceId, open, onOpenChange }: InvoiceView
                   </div>
                 )}
                 {instagramQR && (
-                  <div className="flex-1 flex items-center gap-3 bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
+                  <div className="flex-1 flex items-center gap-3 bg-gradient-to-r from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20 rounded-lg p-3 border border-pink-200 dark:border-pink-800">
                     <div className="flex-shrink-0">
-                      <img src={instagramQR} alt="Instagram" className="w-20 h-20" />
+                      <img src={instagramQR} alt="Instagram" className="w-20 h-20 rounded" />
                     </div>
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
