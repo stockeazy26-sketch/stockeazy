@@ -74,6 +74,8 @@ export function EditInvoiceDialog({ invoiceId, open, onOpenChange }: EditInvoice
       queryClient.invalidateQueries({ queryKey: ["sales-today"] });
       queryClient.invalidateQueries({ queryKey: ["sales-month"] });
       queryClient.invalidateQueries({ queryKey: ["sales-year"] });
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-records"] });
       onOpenChange(false);
     },
     onError: (error) => {

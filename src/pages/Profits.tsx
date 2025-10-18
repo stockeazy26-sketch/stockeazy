@@ -20,10 +20,10 @@ export default function Profits() {
 
   const getProfitData = async (startDate: Date, endDate: Date) => {
     const { data, error } = await supabase
-      .from("invoice_items")
-      .select("product_id, product_name, quantity, total_price, unit_price, products!inner(cost_inr), invoices!inner(created_at)")
-      .gte("invoices.created_at", startDate.toISOString())
-      .lte("invoices.created_at", endDate.toISOString());
+      .from("sales_records")
+      .select("product_id, product_name, quantity, total_price, unit_price, cost_per_unit, total_profit, sale_date")
+      .gte("sale_date", startDate.toISOString())
+      .lte("sale_date", endDate.toISOString());
 
     if (error) throw error;
 
@@ -31,19 +31,18 @@ export default function Profits() {
     let totalCost = 0;
     const productProfits: any = {};
 
-    data.forEach((item: any) => {
-      const cost = item.products?.cost_inr || 0;
-      const itemCost = cost * item.quantity;
-      const itemRevenue = item.total_price;
-      const itemProfit = itemRevenue - itemCost;
+    data.forEach((record: any) => {
+      const itemCost = Number(record.cost_per_unit) * record.quantity;
+      const itemRevenue = Number(record.total_price);
+      const itemProfit = Number(record.total_profit);
 
       totalRevenue += itemRevenue;
       totalCost += itemCost;
 
-      if (!productProfits[item.product_id]) {
-        productProfits[item.product_id] = {
-          product_id: item.product_id,
-          product_name: item.product_name,
+      if (!productProfits[record.product_id]) {
+        productProfits[record.product_id] = {
+          product_id: record.product_id,
+          product_name: record.product_name,
           total_quantity: 0,
           total_revenue: 0,
           total_cost: 0,
@@ -53,10 +52,10 @@ export default function Profits() {
         };
       }
 
-      productProfits[item.product_id].total_quantity += item.quantity;
-      productProfits[item.product_id].total_revenue += itemRevenue;
-      productProfits[item.product_id].total_cost += itemCost;
-      productProfits[item.product_id].total_profit += itemProfit;
+      productProfits[record.product_id].total_quantity += record.quantity;
+      productProfits[record.product_id].total_revenue += itemRevenue;
+      productProfits[record.product_id].total_cost += itemCost;
+      productProfits[record.product_id].total_profit += itemProfit;
     });
 
     Object.values(productProfits).forEach((p: any) => {

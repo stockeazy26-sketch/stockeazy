@@ -14,39 +14,29 @@ export function ProductSales({ selectedDate }: ProductSalesProps) {
     queryFn: async () => {
       const start = startOfDay(selectedDate);
       const end = endOfDay(selectedDate);
-      
-      // Get all invoice items for the selected date (only paid invoices)
-      const { data: invoices, error: invError } = await supabase
-        .from("invoices")
-        .select("id")
-        .eq("payment_status", "done")
-        .gte("created_at", start.toISOString())
-        .lte("created_at", end.toISOString());
-      
-      if (invError) throw invError;
-      
-      if (!invoices || invoices.length === 0) return [];
-      
-      const invoiceIds = invoices.map(inv => inv.id);
-      
-      const { data: items, error: itemsError } = await supabase
-        .from("invoice_items")
+
+      // Get all sales records for the selected date
+      const { data: records, error } = await supabase
+        .from("sales_records")
         .select("product_name, quantity, total_price")
-        .in("invoice_id", invoiceIds);
-      
-      if (itemsError) throw itemsError;
-      
+        .gte("sale_date", start.toISOString())
+        .lte("sale_date", end.toISOString());
+
+      if (error) throw error;
+
+      if (!records || records.length === 0) return [];
+
       // Aggregate by product
       const productMap = new Map<string, { quantity: number; revenue: number }>();
-      
-      items?.forEach((item) => {
-        const existing = productMap.get(item.product_name) || { quantity: 0, revenue: 0 };
-        productMap.set(item.product_name, {
-          quantity: existing.quantity + item.quantity,
-          revenue: existing.revenue + Number(item.total_price),
+
+      records.forEach((record) => {
+        const existing = productMap.get(record.product_name) || { quantity: 0, revenue: 0 };
+        productMap.set(record.product_name, {
+          quantity: existing.quantity + record.quantity,
+          revenue: existing.revenue + Number(record.total_price),
         });
       });
-      
+
       return Array.from(productMap.entries())
         .map(([name, data]) => ({ name, ...data }))
         .sort((a, b) => b.revenue - a.revenue);

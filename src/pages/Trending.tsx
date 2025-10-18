@@ -21,24 +21,24 @@ export default function Trending() {
 
   const getTrendingProducts = async (startDate: Date, endDate: Date) => {
     const { data, error } = await supabase
-      .from("invoice_items")
-      .select("product_id, product_name, quantity, total_price, invoices!inner(created_at)")
-      .gte("invoices.created_at", startDate.toISOString())
-      .lte("invoices.created_at", endDate.toISOString());
+      .from("sales_records")
+      .select("product_id, product_name, quantity, total_price, sale_date")
+      .gte("sale_date", startDate.toISOString())
+      .lte("sale_date", endDate.toISOString());
 
     if (error) throw error;
 
-    const productStats = data.reduce((acc: any, item) => {
-      if (!acc[item.product_id]) {
-        acc[item.product_id] = {
-          product_id: item.product_id,
-          product_name: item.product_name,
+    const productStats = data.reduce((acc: any, record) => {
+      if (!acc[record.product_id]) {
+        acc[record.product_id] = {
+          product_id: record.product_id,
+          product_name: record.product_name,
           total_quantity: 0,
           total_revenue: 0,
         };
       }
-      acc[item.product_id].total_quantity += item.quantity;
-      acc[item.product_id].total_revenue += item.total_price;
+      acc[record.product_id].total_quantity += record.quantity;
+      acc[record.product_id].total_revenue += Number(record.total_price);
       return acc;
     }, {});
 

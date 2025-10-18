@@ -19,10 +19,10 @@ export const YearlySalesChart = ({ currentYear = new Date().getFullYear() }: Yea
     queryKey: ['yearly-sales', year],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('invoices')
-        .select('grand_total, created_at')
-        .gte('created_at', `${year}-01-01`)
-        .lt('created_at', `${year + 1}-01-01`);
+        .from('sales_records')
+        .select('total_price, sale_date')
+        .gte('sale_date', `${year}-01-01`)
+        .lt('sale_date', `${year + 1}-01-01`);
 
       if (error) throw error;
 
@@ -31,9 +31,9 @@ export const YearlySalesChart = ({ currentYear = new Date().getFullYear() }: Yea
         sales: 0
       }));
 
-      data?.forEach(invoice => {
-        const month = new Date(invoice.created_at).getMonth();
-        monthlyData[month].sales += Number(invoice.grand_total);
+      data?.forEach(record => {
+        const month = new Date(record.sale_date).getMonth();
+        monthlyData[month].sales += Number(record.total_price);
       });
 
       return monthlyData;

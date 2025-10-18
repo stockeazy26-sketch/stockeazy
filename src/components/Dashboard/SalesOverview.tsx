@@ -16,14 +16,13 @@ export function SalesOverview({ selectedDate }: SalesOverviewProps) {
       const end = endOfDay(selectedDate);
 
       const { data, error } = await supabase
-        .from("invoices")
-        .select("grand_total")
-        .eq("payment_status", "done")
-        .gte("created_at", start.toISOString())
-        .lte("created_at", end.toISOString());
+        .from("sales_records")
+        .select("total_price")
+        .gte("sale_date", start.toISOString())
+        .lte("sale_date", end.toISOString());
 
       if (error) throw error;
-      return data.reduce((sum, inv) => sum + Number(inv.grand_total), 0);
+      return data.reduce((sum, record) => sum + Number(record.total_price), 0);
     },
   });
 
@@ -34,14 +33,13 @@ export function SalesOverview({ selectedDate }: SalesOverviewProps) {
       const end = endOfDay(selectedDate);
 
       const { data, error } = await supabase
-        .from("invoices")
-        .select("grand_total")
-        .eq("payment_status", "done")
-        .gte("created_at", start.toISOString())
-        .lte("created_at", end.toISOString());
+        .from("sales_records")
+        .select("total_price")
+        .gte("sale_date", start.toISOString())
+        .lte("sale_date", end.toISOString());
 
       if (error) throw error;
-      return data.reduce((sum, inv) => sum + Number(inv.grand_total), 0);
+      return data.reduce((sum, record) => sum + Number(record.total_price), 0);
     },
   });
 
@@ -52,14 +50,13 @@ export function SalesOverview({ selectedDate }: SalesOverviewProps) {
       const end = endOfDay(selectedDate);
 
       const { data, error } = await supabase
-        .from("invoices")
-        .select("grand_total")
-        .eq("payment_status", "done")
-        .gte("created_at", start.toISOString())
-        .lte("created_at", end.toISOString());
+        .from("sales_records")
+        .select("total_price")
+        .gte("sale_date", start.toISOString())
+        .lte("sale_date", end.toISOString());
 
       if (error) throw error;
-      return data.reduce((sum, inv) => sum + Number(inv.grand_total), 0);
+      return data.reduce((sum, record) => sum + Number(record.total_price), 0);
     },
   });
 

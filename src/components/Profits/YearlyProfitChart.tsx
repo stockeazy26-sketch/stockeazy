@@ -20,10 +20,10 @@ export const YearlyProfitChart = ({ open, onOpenChange, currentYear = new Date()
     queryKey: ['yearly-profit', year],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('invoice_items')
-        .select('quantity, total_price, products!inner(cost_inr), invoices!inner(created_at)')
-        .gte('invoices.created_at', `${year}-01-01`)
-        .lt('invoices.created_at', `${year + 1}-01-01`);
+        .from('sales_records')
+        .select('total_profit, total_price, cost_per_unit, quantity, sale_date')
+        .gte('sale_date', `${year}-01-01`)
+        .lt('sale_date', `${year + 1}-01-01`);
 
       if (error) throw error;
 
@@ -34,11 +34,11 @@ export const YearlyProfitChart = ({ open, onOpenChange, currentYear = new Date()
         cost: 0
       }));
 
-      data?.forEach((item: any) => {
-        const month = new Date(item.invoices.created_at).getMonth();
-        const cost = (item.products?.cost_inr || 0) * item.quantity;
-        const revenue = Number(item.total_price);
-        const profit = revenue - cost;
+      data?.forEach((record: any) => {
+        const month = new Date(record.sale_date).getMonth();
+        const cost = Number(record.cost_per_unit) * record.quantity;
+        const revenue = Number(record.total_price);
+        const profit = Number(record.total_profit);
 
         monthlyData[month].profit += profit;
         monthlyData[month].revenue += revenue;

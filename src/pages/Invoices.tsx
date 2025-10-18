@@ -208,6 +208,10 @@ export default function Invoices() {
 
         if (storeSettings?.whatsapp_qr_url) {
           try {
+            // Add light gray background for WhatsApp QR
+            pdf.setFillColor(240, 240, 240);
+            pdf.rect(qrX - 5, bottomY - 5, 40, 45, 'F');
+
             const img = new Image();
             img.src = storeSettings.whatsapp_qr_url;
             await new Promise((resolve) => {
@@ -226,6 +230,10 @@ export default function Invoices() {
 
         if (storeSettings?.instagram_qr_url) {
           try {
+            // Add light gray background for Instagram QR
+            pdf.setFillColor(240, 240, 240);
+            pdf.rect(qrX - 5, bottomY - 5, 40, 45, 'F');
+
             const img = new Image();
             img.src = storeSettings.instagram_qr_url;
             await new Promise((resolve) => {
@@ -257,20 +265,28 @@ export default function Invoices() {
 
   const deleteInvoice = useMutation({
     mutationFn: async (invoiceId: string) => {
-      // Delete invoice items first
+      // Set invoice_id to NULL in sales_records to preserve them
+      const { error: updateSalesError } = await supabase
+        .from("sales_records")
+        .update({ invoice_id: null })
+        .eq("invoice_id", invoiceId);
+
+      if (updateSalesError) throw updateSalesError;
+
+      // Delete invoice items
       const { error: itemsError } = await supabase
         .from("invoice_items")
         .delete()
         .eq("invoice_id", invoiceId);
-      
+
       if (itemsError) throw itemsError;
 
-      // Delete invoice
+      // Delete invoice (sales records are preserved)
       const { error } = await supabase
         .from("invoices")
         .delete()
         .eq("id", invoiceId);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -291,7 +307,7 @@ export default function Invoices() {
         .from("invoice_items")
         .select("*")
         .eq("invoice_id", invoiceId);
-      
+
       if (itemsError) throw itemsError;
 
       // Restore stock for each item
@@ -303,25 +319,33 @@ export default function Invoices() {
             .select("quantity_in_stock")
             .eq("id", item.product_id)
             .single();
-          
+
           if (product) {
             // Restore stock
             await supabase
               .from("products")
-              .update({ 
-                quantity_in_stock: product.quantity_in_stock + item.quantity 
+              .update({
+                quantity_in_stock: product.quantity_in_stock + item.quantity
               })
               .eq("id", item.product_id);
           }
         }
       }
 
+      // Delete sales records (for analytics)
+      const { error: salesError } = await supabase
+        .from("sales_records")
+        .delete()
+        .eq("invoice_id", invoiceId);
+
+      if (salesError) throw salesError;
+
       // Delete invoice items
       const { error: deleteItemsError } = await supabase
         .from("invoice_items")
         .delete()
         .eq("invoice_id", invoiceId);
-      
+
       if (deleteItemsError) throw deleteItemsError;
 
       // Delete invoice
@@ -329,13 +353,14 @@ export default function Invoices() {
         .from("invoices")
         .delete()
         .eq("id", invoiceId);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Sale cancelled and stock restored");
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
       setCancelSaleId(null);
     },
     onError: (error) => {
