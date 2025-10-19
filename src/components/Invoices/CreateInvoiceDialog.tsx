@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Minus, Maximize2 } from "lucide-react";
 import { toast } from "sonner";
 import { ProductSelectionDialog } from "./ProductSelectionDialog";
 import { Calendar } from "@/components/ui/calendar";
@@ -30,6 +30,7 @@ interface InvoiceItem {
 
 export function CreateInvoiceDialog() {
   const [open, setOpen] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -180,7 +181,7 @@ export function CreateInvoiceDialog() {
             .select("quantity_in_stock")
             .eq("id", item.productId)
             .single();
-          
+
           if (productError) {
             console.warn(`Failed to get product ${item.productId}:`, productError);
             continue;
@@ -192,10 +193,51 @@ export function CreateInvoiceDialog() {
             .from("products")
             .update({ quantity_in_stock: newStock })
             .eq("id", item.productId);
-          
+
           if (updateError) {
             console.warn(`Failed to update stock for product ${item.productId}:`, updateError);
           }
+        }
+      }
+
+      // Create sales records if payment status is 'done'
+      if (paymentStatus === 'done') {
+        const salesRecords = await Promise.all(
+          items.map(async (item) => {
+            const { data: product } = await supabase
+              .from("products")
+              .select("cost_inr")
+              .eq("id", item.productId)
+              .single();
+
+            const costPerUnit = product?.cost_inr || 0;
+            const profitPerUnit = item.unitPrice - costPerUnit;
+            const totalProfit = profitPerUnit * item.quantity;
+
+            return {
+              invoice_id: invoice.id,
+              invoice_number: invoice.invoice_number,
+              product_id: item.productId,
+              product_name: item.productName,
+              size_name: item.sizeName || null,
+              color_name: item.colorName || null,
+              quantity: item.quantity,
+              unit_price: item.unitPrice,
+              total_price: item.totalPrice,
+              cost_per_unit: costPerUnit,
+              profit_per_unit: profitPerUnit,
+              total_profit: totalProfit,
+              sale_date: invoice.created_at
+            };
+          })
+        );
+
+        const { error: salesError } = await supabase
+          .from("sales_records")
+          .insert(salesRecords);
+
+        if (salesError) {
+          console.error("Failed to create sales records:", salesError);
         }
       }
 
@@ -204,7 +246,9 @@ export function CreateInvoiceDialog() {
     onSuccess: () => {
       toast.success("Invoice created successfully");
       queryClient.invalidateQueries({ queryKey: ["invoices"] });
-      queryClient.invalidateQueries({ queryKey: ["products"] }); // Refresh product stock
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["sales-records"] });
       setOpen(false);
       resetForm();
     },
@@ -323,17 +367,31 @@ export function CreateInvoiceDialog() {
   );
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Invoice
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
-        <DialogHeader>
-          <DialogTitle>Create New Invoice</DialogTitle>
-        </DialogHeader>
+    <>
+      <Dialog open={open && !minimized} onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (!isOpen) {
+          setMinimized(false);
+        }
+      }}>
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Invoice
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-4xl max-h-[90vh]">
+          <DialogHeader className="flex flex-row items-center justify-between">
+            <DialogTitle>Create New Invoice</DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMinimized(true)}
+              className="h-6 w-6"
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+          </DialogHeader>
         <ScrollArea className="max-h-[calc(90vh-200px)] pr-4">
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
@@ -607,5 +665,41 @@ export function CreateInvoiceDialog() {
         onSelectProduct={handleSelectProduct}
       />
     </Dialog>
+
+    {/* Minimized floating widget */}
+    {open && minimized && (
+      <div className="fixed bottom-6 right-6 z-50">
+        <div className="bg-card border rounded-lg shadow-lg p-4 max-w-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1">
+              <h4 className="font-semibold">Create Invoice (Minimized)</h4>
+              <p className="text-sm text-muted-foreground">
+                {items.length} item{items.length !== 1 ? 's' : ''} • ₹{grandTotal.toFixed(2)}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setMinimized(false)}
+              >
+                <Maximize2 className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => {
+                  setOpen(false);
+                  setMinimized(false);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+  </>
   );
 }

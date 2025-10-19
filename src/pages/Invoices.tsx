@@ -152,20 +152,35 @@ export default function Invoices() {
       }
 
       // Items table header
-      pdf.setFillColor(240, 240, 240);
-      pdf.rect(15, yPos, pageWidth - 30, 8, "F");
-      pdf.setFontSize(10);
-      pdf.text("Product", 20, yPos + 5);
-      pdf.text("Size", 85, yPos + 5);
-      pdf.text("Color", 110, yPos + 5);
-      pdf.text("Qty", 135, yPos + 5);
-      pdf.text("Price", 155, yPos + 5);
-      pdf.text("Total", pageWidth - 25, yPos + 5, { align: "right" });
+      const drawTableHeader = (y: number) => {
+        pdf.setFillColor(240, 240, 240);
+        pdf.rect(15, y, pageWidth - 30, 8, "F");
+        pdf.setFontSize(10);
+        pdf.text("Product", 20, y + 5);
+        pdf.text("Size", 85, y + 5);
+        pdf.text("Color", 110, y + 5);
+        pdf.text("Qty", 135, y + 5);
+        pdf.text("Price", 155, y + 5);
+        pdf.text("Total", pageWidth - 25, y + 5, { align: "right" });
+      };
 
-      // Items
+      drawTableHeader(yPos);
+
+      // Items with page overflow handling
       yPos += 12;
       pdf.setFontSize(9);
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const bottomMargin = 70;
+
       items?.forEach((item) => {
+        // Check if we need a new page
+        if (yPos > pageHeight - bottomMargin) {
+          pdf.addPage();
+          yPos = 20;
+          drawTableHeader(yPos);
+          yPos += 12;
+        }
+
         pdf.text(item.product_name, 20, yPos);
         pdf.text(item.size_name || "-", 85, yPos);
         pdf.text(item.color_name || "-", 110, yPos);
@@ -175,7 +190,12 @@ export default function Invoices() {
         yPos += 6;
       });
 
-      // Totals
+      // Totals - ensure they fit on current page
+      if (yPos > pageHeight - bottomMargin) {
+        pdf.addPage();
+        yPos = 20;
+      }
+
       yPos += 10;
       pdf.setFontSize(10);
       pdf.text("Subtotal:", pageWidth - 70, yPos);
@@ -199,18 +219,23 @@ export default function Invoices() {
       pdf.text("Grand Total:", pageWidth - 70, yPos);
       pdf.text(invoice.grand_total.toString(), pageWidth - 25, yPos, { align: "right" });
 
-      // Add QR codes at the bottom if uploaded
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const bottomY = pageHeight - 50;
+      // Add QR codes at the bottom of the last page
+      const currentPageHeight = pdf.internal.pageSize.getHeight();
+      const qrBottomY = currentPageHeight - 50;
 
       if (storeSettings?.whatsapp_qr_url || storeSettings?.instagram_qr_url) {
-        let qrX = 20;
+        const hasWhatsapp = !!storeSettings?.whatsapp_qr_url;
+        const hasInstagram = !!storeSettings?.instagram_qr_url;
 
-        if (storeSettings?.whatsapp_qr_url) {
+        // Calculate positions for proper spacing
+        let whatsappX = 20;
+        let instagramX = pageWidth - 55;
+
+        if (hasWhatsapp) {
           try {
             // Add light gray background for WhatsApp QR
             pdf.setFillColor(240, 240, 240);
-            pdf.rect(qrX - 5, bottomY - 5, 40, 45, 'F');
+            pdf.rect(whatsappX - 5, qrBottomY - 5, 40, 45, 'F');
 
             const img = new Image();
             img.src = storeSettings.whatsapp_qr_url;
@@ -218,21 +243,20 @@ export default function Invoices() {
               img.onload = resolve;
               img.onerror = resolve;
             });
-            pdf.addImage(img, 'PNG', qrX, bottomY, 30, 30);
+            pdf.addImage(img, 'PNG', whatsappX, qrBottomY, 30, 30);
             pdf.setFontSize(8);
             pdf.setFont(undefined, 'bold');
-            pdf.text(storeSettings.whatsapp_tagline || 'Join our WhatsApp', qrX + 15, bottomY + 35, { align: 'center' });
-            qrX += 60;
+            pdf.text(storeSettings.whatsapp_tagline || 'Join our WhatsApp', whatsappX + 15, qrBottomY + 35, { align: 'center' });
           } catch (err) {
             console.error('WhatsApp QR load failed:', err);
           }
         }
 
-        if (storeSettings?.instagram_qr_url) {
+        if (hasInstagram) {
           try {
-            // Add light gray background for Instagram QR
+            // Add light gray background for Instagram QR (right-aligned)
             pdf.setFillColor(240, 240, 240);
-            pdf.rect(qrX - 5, bottomY - 5, 40, 45, 'F');
+            pdf.rect(instagramX - 5, qrBottomY - 5, 40, 45, 'F');
 
             const img = new Image();
             img.src = storeSettings.instagram_qr_url;
@@ -240,10 +264,10 @@ export default function Invoices() {
               img.onload = resolve;
               img.onerror = resolve;
             });
-            pdf.addImage(img, 'PNG', qrX, bottomY, 30, 30);
+            pdf.addImage(img, 'PNG', instagramX, qrBottomY, 30, 30);
             pdf.setFontSize(8);
             pdf.setFont(undefined, 'bold');
-            pdf.text(storeSettings.instagram_tagline || 'Follow us on Instagram', qrX + 15, bottomY + 35, { align: 'center' });
+            pdf.text(storeSettings.instagram_tagline || 'Follow us on Instagram', instagramX + 15, qrBottomY + 35, { align: 'center' });
           } catch (err) {
             console.error('Instagram QR load failed:', err);
           }

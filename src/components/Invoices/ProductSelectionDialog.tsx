@@ -9,7 +9,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { Search, AlertCircle } from "lucide-react";
+import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ProductSelectionDialogProps {
@@ -53,6 +54,13 @@ export function ProductSelectionDialog({
   );
 
   const handleSelect = (product: any) => {
+    if (product.quantity_in_stock <= 0) {
+      toast.error("Please add stock before adding this product.", {
+        description: `${product.name} is currently out of stock.`,
+        duration: 4000,
+      });
+      return;
+    }
     onSelectProduct(product);
     onOpenChange(false);
     setSearchQuery("");
@@ -89,7 +97,11 @@ export function ProductSelectionDialog({
                 return (
                   <div
                     key={product.id}
-                    className="flex items-center gap-4 p-3 border rounded-lg hover:bg-accent cursor-pointer transition-colors"
+                    className={`flex items-center gap-4 p-3 border rounded-lg transition-colors ${
+                      product.quantity_in_stock <= 0
+                        ? "opacity-60 cursor-not-allowed bg-muted"
+                        : "hover:bg-accent cursor-pointer"
+                    }`}
                     onClick={() => handleSelect(product)}
                   >
                     {product.image_url ? (
@@ -110,10 +122,15 @@ export function ProductSelectionDialog({
                           SKU: {product.sku}
                         </p>
                       )}
-                      <p className="text-sm">
-                        Stock: {product.quantity_in_stock} | Price: ₹
-                        {product.price_inr}
-                      </p>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className={product.quantity_in_stock <= 0 ? "text-red-600 font-semibold" : ""}>
+                          Stock: {product.quantity_in_stock}
+                        </span>
+                        {product.quantity_in_stock <= 0 && (
+                          <AlertCircle className="h-4 w-4 text-red-600" />
+                        )}
+                        <span>| Price: ₹{product.price_inr}</span>
+                      </div>
                       {productSizes && productSizes.length > 0 && (
                         <p className="text-xs text-muted-foreground">
                           Sizes: {productSizes.map((s) => s.name).join(", ")}
